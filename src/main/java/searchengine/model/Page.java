@@ -3,15 +3,14 @@ package searchengine.model;
 import javax.persistence.*;
 
 @Entity
-@Table (name = "Page")
+@Table(name = "Page", indexes = {@Index(columnList = "path, site_id", name = "path_index")})
 public class Page {
     @Id
     @GeneratedValue (strategy = GenerationType.IDENTITY)
     private int id;
     @ManyToOne (cascade = CascadeType.ALL)
     private Site site;
-    @Column(columnDefinition = "TEXT")
-    //остановился тут 17.12.2022
+    @Column(columnDefinition = "VARCHAR(255)")
     private String path;
     private int code;
     @Column(columnDefinition = "MEDIUMTEXT")

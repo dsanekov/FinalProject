@@ -21,4 +21,12 @@ public class ApiController {
     public ResponseEntity<StatisticsResponse> statistics() {
         return ResponseEntity.ok(statisticsService.getStatistics());
     }
+    @GetMapping("/startIndexing")
+    public ResponseEntity<StatisticsResponse> startIndexing() {
+        return ResponseEntity.ok();//старт обхода сайтов
+    }
+    @GetMapping("/stopIndexing")
+    public ResponseEntity<StatisticsResponse> stopIndexing() {
+        return ResponseEntity.ok();//остановка обхода сайтов
+    }
 }
