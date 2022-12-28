@@ -1,6 +1,10 @@
 package searchengine.model;
-
 import javax.persistence.*;
+import java.util.TreeSet;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 
 @Entity
 @Table(name = "Page", indexes = {@Index(columnList = "path, site_id", name = "path_index")})
@@ -15,6 +19,40 @@ public class Page {
     private int code;
     @Column(columnDefinition = "MEDIUMTEXT")
     private String content;
+
+    private static volatile TreeSet<String> existingAddresses = new TreeSet<>();
+
+    public Page(String path) {
+        this.path = path;
+        existingAddresses.add(path);
+    }
+
+    public TreeSet<String> getChildLinks (){
+        TreeSet<String> childLinks = new TreeSet<>();
+        try {
+            Document doc = Jsoup.connect(path).timeout(10000).ignoreHttpErrors(true).maxBodySize(0).get();//TODO изменить запрос по инструкции! чекни файл
+            Thread.sleep(150);
+            Elements link = doc.select("a");
+            for (Element e : link) {
+                String linkAddress = e.attr("abs:href");
+                if(linkAddress.startsWith(path)
+                        && !linkAddress.contains("pdf")
+                        && !linkAddress.contains("#")
+                        && !linkAddress.contains("?")
+                        && linkAddress.charAt(linkAddress.length()-1) == '/') {
+                    childLinks.add(linkAddress);
+                    System.out.println(linkAddress);
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        return childLinks;
+    }
+
+    public static TreeSet<String> getExistingAddresses() {
+        return existingAddresses;
+    }
 
     public int getId() {
         return id;
