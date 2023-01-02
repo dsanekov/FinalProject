@@ -10,18 +10,11 @@ import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+import java.sql.*;
+
 @SpringBootApplication
 public class Application {
     public static void main(String[] args) {
-//        StandardServiceRegistry registry = new StandardServiceRegistryBuilder()
-//                .configure("hibernate.cfg.xml").build();
-//        Metadata metadata = new MetadataSources(registry).getMetadataBuilder().build();
-//        SessionFactory sessionFactory = metadata.getSessionFactoryBuilder().build();
-//        Session session = sessionFactory.openSession();
-//        Transaction transaction = session.beginTransaction();
-
         SpringApplication.run(Application.class, args);
-//        transaction.commit();
-//        sessionFactory.close();
     }
 }
