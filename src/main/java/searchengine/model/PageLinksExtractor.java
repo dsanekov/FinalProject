@@ -1,5 +1,5 @@
 package searchengine.model;
-
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -14,23 +14,27 @@ public class PageLinksExtractor extends RecursiveTask <Set<String>>  {
     }
 
     @Override
-    protected Set<String> compute() {
+    protected Set<String> compute(){
         TreeSet<String> set = new TreeSet<>();
         List<PageLinksExtractor> taskList = new ArrayList<>();
         for(String path : page.getChildLinks()) {
             synchronized (Page.getExistingAddresses()) {
-                if (!Page.getExistingAddresses().contains(path)) { //TODO проверять по базе! а не так
-                    Page newPage = new Page(path);
-                    set.add(path);
-                    PageLinksExtractor task = new PageLinksExtractor(newPage);
-                    task.fork();
-                    taskList.add(task);
+                try {
+                    if (!DBConnection.thisSiteExists(path)) {
+                        Page newPage = new Page(path);//todo пофиксить констурктор
+                        set.add(path);
+                        PageLinksExtractor task = new PageLinksExtractor(newPage);
+                        task.fork();
+                        taskList.add(task);
+                    }
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
                 }
             }
         }
         for (PageLinksExtractor task : taskList) {
             set.addAll(task.join());
         }
-        return set; //TODO надо ли возращать сэт?
+        return set;
     }
 }

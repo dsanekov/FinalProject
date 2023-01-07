@@ -2,6 +2,8 @@ package searchengine.model;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table (name = "Site")
@@ -20,13 +22,19 @@ public class Site {
     private String url;
     @Column(columnDefinition = "VARCHAR(255)")
     private String name;
+    private static List<Site> siteList = new ArrayList<>();
+
+    public Site(SiteStatus status, LocalDateTime statusTime, String lastError, String url, String name) {
+        this.status = status;
+        this.statusTime = statusTime;
+        this.lastError = lastError;
+        this.url = url;
+        this.name = name;
+        siteList.add(Site.this);
+    }
 
     public int getId() {
         return id;
-    }
-
-    public void setId(int id) {
-        this.id = id;
     }
 
     public SiteStatus getStatus() {
@@ -67,5 +75,14 @@ public class Site {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public static Site getSiteById(int id){
+        for (Site site : siteList){
+            if(site.getId() == id){
+                return site;
+            }
+        }
+        return null;
     }
 }

@@ -23,18 +23,20 @@ public class IndexingService {
 
     public void startIndexing() throws SQLException {
         DBConnection.deleteInfoAboutSites();
+        DBConnection.executeInsertSitesAreIndexing();
         String[] result = { "true", "false" };
         String error = "Данная страница находится за пределами сайтов,указанных в конфигурационном файле";
         Set<String> allPages = new TreeSet<>();//TODO здесь будут все страницы со всех сайтов, указаных в конфиге .yaml. НО!!!! надо хранить этот сэт не здесь!!!! убрать! Оставить только старт
         List<Site> sitesList = sites.getSites();
         for(Site site : sitesList){
             new Thread(()->{
-                Page firstPage = new Page(site.getUrl());
+                Page firstPage = new Page(site.getUrl());//todo пофиксить констурктор
                 PageLinksExtractor extractor = new PageLinksExtractor(firstPage);
                 Set<String> siteSet = new ForkJoinPool().invoke(extractor);
                 allPages.addAll(siteSet);
             }).start();
         }
+        DBConnection.writeInfoAboutPagesToDB(allPages);
     }
 
     public void stopIndexing(){
