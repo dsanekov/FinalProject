@@ -19,7 +19,7 @@
         <!-- Drop and re-create the database schema on startup -->
         <property name="hbm2ddl.auto">validate</property>
 
-        <mapping class="Site"></mapping>
-        <mapping class="Page"></mapping>
+        <mapping class="searchengine.model.Site"></mapping>
+        <mapping class="searchengine.model.Page"></mapping>
     </session-factory>
 </hibernate-configuration>

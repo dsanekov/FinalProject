@@ -19,14 +19,12 @@ public class Page {
     private int code;
     @Column(columnDefinition = "MEDIUMTEXT")
     private String content;
-    private static volatile TreeSet<String> existingAddresses = new TreeSet<>();
 
     public Page(Site site, String path, int code, String content) {
         this.site = site;
         this.path = path;
         this.code = code;
         this.content = content;
-        existingAddresses.add(path);
     }
 
 
@@ -51,10 +49,6 @@ public class Page {
             throw new RuntimeException(e);
         }
         return childLinks;
-    }
-
-    public static TreeSet<String> getExistingAddresses() {
-        return existingAddresses;
     }
 
     public int getId() {
