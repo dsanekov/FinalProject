@@ -9,7 +9,6 @@ import java.util.concurrent.RecursiveTask;
 public class PageLinksExtractor extends RecursiveTask <Set<String>>  {
     private Page page;
     private Site site;
-    private DBConnection dbConnection = new DBConnection();
 
     public PageLinksExtractor(Page page,Site site) {
         this.page = page;
@@ -22,7 +21,7 @@ public class PageLinksExtractor extends RecursiveTask <Set<String>>  {
         List<PageLinksExtractor> taskList = new ArrayList<>();
         for(String path : page.getChildLinks()) {
                 try {
-                    if (!dbConnection.thisPageExists(path)) {
+                    if (!DBConnection.thisPageExists(path)) {
                         int code = 0;
                         String content = "";
                         Page newPage = new Page(site,path,code,content);

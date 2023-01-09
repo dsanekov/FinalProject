@@ -12,12 +12,13 @@ public class Page {
     @Id
     @GeneratedValue (strategy = GenerationType.IDENTITY)
     private int id;
-    @ManyToOne (cascade = CascadeType.ALL)
+    @ManyToOne (cascade = {CascadeType.DETACH,CascadeType.MERGE,CascadeType.REFRESH}, targetEntity = Site.class)
+    @JoinColumn (name = "site_id", referencedColumnName = "id", nullable = false)
     private Site site;
     @Column(columnDefinition = "VARCHAR(255)")
     private String path;
     private int code;
-    @Column(columnDefinition = "MEDIUMTEXT")
+    @Column(length = 16777215, columnDefinition = "mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci")
     private String content;
 
     public Page(Site site, String path, int code, String content) {
@@ -31,14 +32,17 @@ public class Page {
     public TreeSet<String> getChildLinks (){
         TreeSet<String> childLinks = new TreeSet<>();
         try {
-            Document doc = Jsoup.connect(path).timeout(10000).ignoreHttpErrors(true).maxBodySize(0).get();//TODO изменить запрос по инструкции! чекни файл
+            Document doc = Jsoup.connect(path)
+                     .userAgent("Mozilla/5.0 (Windows; U; WindowsNT 5.1; en-US; rv1.8.1.6) Gecko/20070725 Firefox/2.0.0.6")
+                    .referrer("http://www.google.com")
+                    .timeout(10000)
+                    .ignoreHttpErrors(true)
+                    .get();
             Thread.sleep(150);
             Elements link = doc.select("a");
             for (Element e : link) {
                 String linkAddress = e.attr("abs:href");
                 if(linkAddress.startsWith(path)
-                        && !linkAddress.contains("pdf")
-                        && !linkAddress.contains("#")
                         && !linkAddress.contains("?")
                         && linkAddress.charAt(linkAddress.length()-1) == '/') {
                     childLinks.add(linkAddress);

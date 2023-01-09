@@ -27,15 +27,16 @@ public class IndexingService {
         DBConnection.deleteInfoAboutSitesAndPages(sites.getSites());
         String[] result = { "true", "false" };
         String error = "Данная страница находится за пределами сайтов,указанных в конфигурационном файле";
-        Set<String> allPages = new TreeSet<>();//TODO здесь будут все страницы со всех сайтов, указаных в конфиге .yaml. НО!!!! надо хранить этот сэт не здесь!!!! убрать! Оставить только старт
+        Set<String> allPages = new TreeSet<>();
         List<Site> sitesList = sites.getSites();
         for(Site site : sitesList){
             new Thread(()->{
-                searchengine.model.Site newSite = new searchengine.model.Site(SiteStatus.INDEXING, LocalDateTime.now(),"NULL",site.getUrl(),site.getName());
+                LocalDateTime statusTime = LocalDateTime.now();//todo сделать формат времени "2022-09-25 10:15:34"
+                searchengine.model.Site newSite = new searchengine.model.Site(SiteStatus.INDEXING, statusTime,"NULL",site.getUrl(),site.getName());
                 DBConnection.executeInsertSiteIndexing(newSite);
                 int code = 0; //todo получать при запросе со страницы
                 String content = ""; //todo получать при запросе со страницы. контент страницы (HTML-код)
-                Page firstPage = new Page(newSite,site.getUrl(),code,content);//todo пофиксить констурктор
+                Page firstPage = new Page(newSite,site.getUrl(),code,content);
                 try {
                     DBConnection.insertInfoAboutPage(firstPage);
                 } catch (SQLException e) {

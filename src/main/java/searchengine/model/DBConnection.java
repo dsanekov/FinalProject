@@ -27,8 +27,9 @@ public class DBConnection {
     private static StandardServiceRegistry registry = new StandardServiceRegistryBuilder().configure("hibernate.cfg.xml").build();
     private static Metadata metadata = new MetadataSources(registry).getMetadataBuilder().build();
     private static SessionFactory sessionFactory = metadata.getSessionFactoryBuilder().build();
+    private static Session session = sessionFactory.openSession();
 
-    private static Connection getConnection() {
+    private static synchronized Connection getConnection() {
         if (connection == null) {
             try {
                 connection = DriverManager.getConnection(
@@ -40,22 +41,21 @@ public class DBConnection {
         }
         return connection;
     }
-    public static boolean thisPageExists(String path) throws SQLException{
-        String query = "EXISTS(SELECT id FROM page WHERE path = " + path + ")";
-        ResultSet rs = DBConnection.getConnection().createStatement().executeQuery(query);
+    public static synchronized boolean thisPageExists(String path) throws SQLException{
+        String query = "SELECT id FROM page WHERE path = '" + path + "')";
+        ResultSet rs = getConnection().createStatement().executeQuery(query);
         System.out.println("Запрос на наличте страницы с path '" + path + "' в базе - " + rs.next());
         return rs.next();
     }
 
-    public static void executeInsertSiteIndexing(searchengine.model.Site site){
-        Session session = sessionFactory.openSession();
+    public static synchronized void executeInsertSiteIndexing(searchengine.model.Site site){
         Transaction transaction = session.beginTransaction();
         session.save(site);
         transaction.commit();
-        sessionFactory.close();
+        //sessionFactory.close();
     }
 
-    public static List<Integer> getSitesIdForDeletion(List<Site> sites) throws SQLException{
+    public static synchronized List<Integer> getSitesIdForDeletion(List<Site> sites) throws SQLException{
         List<Integer> idList = new ArrayList<>();
         for(Site site : sites) {
             boolean isStart = selectQuery.length() == 0;
@@ -69,26 +69,26 @@ public class DBConnection {
         clearSelectQuery();
         return idList;
     }
-    public static void deleteInfoAboutSitesAndPages(List<Site> sites) throws SQLException {
+    public static synchronized void deleteInfoAboutSitesAndPages(List<Site> sites) throws SQLException {
         List<Integer> idList = getSitesIdForDeletion(sites);
         deleteInfoAboutSites(idList);
         deleteInfoAboutPages(idList);
     }
 
-    public static void deleteInfoAboutSites(List<Integer> idList) throws SQLException{
+    public static synchronized void deleteInfoAboutSites(List<Integer> idList) throws SQLException{
         for(Integer id : idList) {
             boolean isStart = deleteQuery.length() == 0;
-            deleteQuery.append((isStart ? "DELETE FROM site WHERE" :" ,")+(" id = '" + id +"'"));
+            deleteQuery.append((isStart ? "DELETE FROM site WHERE" :" OR")+(" id = '" + id +"'"));
         }
         if(deleteQuery.length() != 0){
             getConnection().createStatement().execute(deleteQuery.toString());
         }
         clearDeleteQuery();
     }
-    public static void deleteInfoAboutPages(List<Integer> idList) throws SQLException{
+    public static synchronized void deleteInfoAboutPages(List<Integer> idList) throws SQLException{
         for(Integer id : idList) {
             boolean isStart = deleteQuery.length() == 0;
-            deleteQuery.append((isStart ? "DELETE FROM page WHERE" :" ,")+(" site_id = '" + id +"'"));
+            deleteQuery.append((isStart ? "DELETE FROM page WHERE" :" OR")+(" site_id = '" + id +"'"));
         }
         if(deleteQuery.length() != 0){
             getConnection().createStatement().execute(deleteQuery.toString());
@@ -96,12 +96,11 @@ public class DBConnection {
         clearDeleteQuery();
     }
 
-    public static void insertInfoAboutPage(Page page) throws SQLException{
-        Session session = sessionFactory.openSession();
+    public static synchronized void insertInfoAboutPage(Page page) throws SQLException{
         Transaction transaction = session.beginTransaction();
         session.save(page);
         transaction.commit();
-        sessionFactory.close();
+        //sessionFactory.close();
     }
     private static void clearDeleteQuery(){
         deleteQuery = new StringBuffer();
