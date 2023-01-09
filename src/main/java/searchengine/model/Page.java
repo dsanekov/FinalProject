@@ -11,14 +11,15 @@ import org.jsoup.select.Elements;
 public class Page {
     @Id
     @GeneratedValue (strategy = GenerationType.IDENTITY)
+    @Column (name = "id", nullable = false, updatable = false)
     private int id;
-    @ManyToOne (cascade = {CascadeType.DETACH,CascadeType.MERGE,CascadeType.REFRESH}, targetEntity = Site.class)
-    @JoinColumn (name = "site_id", referencedColumnName = "id", nullable = false)
+    @ManyToOne (fetch = FetchType.EAGER)
     private Site site;
-    @Column(columnDefinition = "VARCHAR(255)")
+    @Column(name = "path", columnDefinition = "VARCHAR(255)")
     private String path;
+    @Column(name = "code", nullable = false)
     private int code;
-    @Column(length = 16777215, columnDefinition = "mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci")
+    @Column(name = "content", nullable = false, length = 16777215, columnDefinition = "mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci")
     private String content;
 
     public Page(Site site, String path, int code, String content) {

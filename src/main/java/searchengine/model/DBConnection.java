@@ -42,7 +42,7 @@ public class DBConnection {
         return connection;
     }
     public static synchronized boolean thisPageExists(String path) throws SQLException{
-        String query = "SELECT id FROM page WHERE path = '" + path + "')";
+        String query = "SELECT `id` FROM `page` WHERE `path` = '" + path + "'";
         ResultSet rs = getConnection().createStatement().executeQuery(query);
         System.out.println("Запрос на наличте страницы с path '" + path + "' в базе - " + rs.next());
         return rs.next();

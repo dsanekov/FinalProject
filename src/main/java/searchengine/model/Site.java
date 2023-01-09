@@ -23,7 +23,7 @@ public class Site {
     private String url;
     @Column(columnDefinition = "VARCHAR(255)")
     private String name;
-    @OneToMany (mappedBy = "site", cascade = {CascadeType.REMOVE, CascadeType.REFRESH,CascadeType.MERGE, CascadeType.DETACH})
+    @OneToMany (mappedBy = "site", cascade = CascadeType.ALL)
     private List<Page> pages;
 
     public Site(SiteStatus status, LocalDateTime statusTime, String lastError, String url, String name) {

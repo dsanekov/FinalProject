@@ -25,6 +25,7 @@ public class PageLinksExtractor extends RecursiveTask <Set<String>>  {
                         int code = 0;
                         String content = "";
                         Page newPage = new Page(site,path,code,content);
+                        DBConnection.insertInfoAboutPage(newPage);
                         set.add(path);
                         PageLinksExtractor task = new PageLinksExtractor(newPage,site);
                         task.fork();

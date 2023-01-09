@@ -47,6 +47,8 @@ public class IndexingService {
                 allPages.addAll(siteSet);
             }).start();
         }
+        System.out.println("Индексация закончена!");
+        //todo после индексации поменять у Site статус и время.
     }
 
     public void stopIndexing() throws SQLException{
