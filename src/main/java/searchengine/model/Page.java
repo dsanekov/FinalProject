@@ -11,15 +11,15 @@ import org.jsoup.select.Elements;
 public class Page {
     @Id
     @GeneratedValue (strategy = GenerationType.IDENTITY)
-    @Column (name = "id", nullable = false, updatable = false)
     private int id;
-    @ManyToOne (fetch = FetchType.EAGER)
+    @ManyToOne ()
+    @JoinColumn (name = "site_id", referencedColumnName = "id", nullable = false)
     private Site site;
-    @Column(name = "path", columnDefinition = "VARCHAR(255)")
+    @Column(columnDefinition = "VARCHAR(255)", nullable = false)
     private String path;
-    @Column(name = "code", nullable = false)
+    @Column(nullable = false)
     private int code;
-    @Column(name = "content", nullable = false, length = 16777215, columnDefinition = "mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci")
+    @Column(length = 16777215, columnDefinition = "mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci")
     private String content;
 
     public Page(Site site, String path, int code, String content) {
@@ -28,6 +28,7 @@ public class Page {
         this.code = code;
         this.content = content;
     }
+    public Page(){}
 
 
     public TreeSet<String> getChildLinks (){

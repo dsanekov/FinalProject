@@ -1,4 +1,7 @@
 package searchengine.model;
+import org.springframework.beans.factory.annotation.Autowired;
+import searchengine.repositories.PageRepository;
+
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -9,10 +12,13 @@ import java.util.concurrent.RecursiveTask;
 public class PageLinksExtractor extends RecursiveTask <Set<String>>  {
     private Page page;
     private Site site;
+    @Autowired
+    private PageRepository pageRepository;
 
-    public PageLinksExtractor(Page page,Site site) {
+    public PageLinksExtractor(Page page,Site site, PageRepository pageRepository) {
         this.page = page;
         this.site = site;
+        this.pageRepository = pageRepository;
     }
 
     @Override
@@ -25,9 +31,9 @@ public class PageLinksExtractor extends RecursiveTask <Set<String>>  {
                         int code = 0;
                         String content = "";
                         Page newPage = new Page(site,path,code,content);
-                        DBConnection.insertInfoAboutPage(newPage);
+                        pageRepository.save(newPage);
                         set.add(path);
-                        PageLinksExtractor task = new PageLinksExtractor(newPage,site);
+                        PageLinksExtractor task = new PageLinksExtractor(newPage,site,pageRepository);
                         task.fork();
                         taskList.add(task);
                     }

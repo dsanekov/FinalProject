@@ -13,17 +13,17 @@ public class Site {
     @GeneratedValue (strategy = GenerationType.IDENTITY)
     private int id;
     @Enumerated (EnumType.STRING)
-    @Column(columnDefinition = "ENUM('INDEXING', 'INDEXED')")
+    @Column(columnDefinition = "ENUM('INDEXING', 'INDEXED', 'FAILED')", nullable = false)
     private SiteStatus status;
-    @Column (name = "status_time")
+    @Column (name = "status_time", nullable = false)
     private LocalDateTime statusTime;
     @Column (name = "last_error",columnDefinition = "TEXT")
     private String lastError;
-    @Column(columnDefinition = "VARCHAR(255)")
+    @Column(columnDefinition = "VARCHAR(255)", nullable = false)
     private String url;
-    @Column(columnDefinition = "VARCHAR(255)")
+    @Column(columnDefinition = "VARCHAR(255)", nullable = false)
     private String name;
-    @OneToMany (mappedBy = "site", cascade = CascadeType.ALL)
+    @OneToMany (mappedBy = "site", cascade = CascadeType.REMOVE)
     private List<Page> pages;
 
     public Site(SiteStatus status, LocalDateTime statusTime, String lastError, String url, String name) {
@@ -33,6 +33,7 @@ public class Site {
         this.url = url;
         this.name = name;
     }
+    public Site(){}
 
     public int getId() {
         return id;
@@ -78,4 +79,7 @@ public class Site {
         this.name = name;
     }
 
+    public List<Page> getPages() {
+        return pages;
+    }
 }
