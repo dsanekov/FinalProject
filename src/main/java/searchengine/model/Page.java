@@ -1,21 +1,27 @@
 package searchengine.model;
 import javax.persistence.*;
+import java.util.Objects;
 import java.util.TreeSet;
+
+import lombok.Getter;
+import lombok.Setter;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 @Entity
+@Setter
+@Getter
 @Table(name = "Page", indexes = {@Index(columnList = "path, site_id", name = "path_index")})
 public class Page {
     @Id
-    @GeneratedValue (strategy = GenerationType.IDENTITY)
+    @GeneratedValue (strategy = GenerationType.AUTO)
     private int id;
-    @ManyToOne ()
+    @ManyToOne (fetch = FetchType.LAZY)
     @JoinColumn (name = "site_id", referencedColumnName = "id", nullable = false)
     private Site site;
-    @Column(columnDefinition = "VARCHAR(255)", nullable = false)
+    @Column(columnDefinition = "VARCHAR(515)", nullable = false)
     private String path;
     @Column(nullable = false)
     private int code;
@@ -30,7 +36,6 @@ public class Page {
     }
     public Page(){}
 
-
     public TreeSet<String> getChildLinks (){
         TreeSet<String> childLinks = new TreeSet<>();
         try {
@@ -41,7 +46,7 @@ public class Page {
                     .ignoreHttpErrors(true)
                     .get();
             Thread.sleep(150);
-            Elements link = doc.select("a");
+            Elements link = doc.select("body").select("a");
             for (Element e : link) {
                 String linkAddress = e.attr("abs:href");
                 if(linkAddress.startsWith(path)
@@ -57,43 +62,27 @@ public class Page {
         return childLinks;
     }
 
-    public int getId() {
-        return id;
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Page page = (Page) o;
+        return id == page.id && code == page.code && Objects.equals(site, page.site) && Objects.equals(path, page.path) && Objects.equals(content, page.content);
     }
 
-    public void setId(int id) {
-        this.id = id;
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, site, path, code, content);
     }
 
-    public Site getSite() {
-        return site;
-    }
-
-    public void setSite(Site site) {
-        this.site = site;
-    }
-
-    public String getPath() {
-        return path;
-    }
-
-    public void setPath(String path) {
-        this.path = path;
-    }
-
-    public int getCode() {
-        return code;
-    }
-
-    public void setCode(int code) {
-        this.code = code;
-    }
-
-    public String getContent() {
-        return content;
-    }
-
-    public void setContent(String content) {
-        this.content = content;
+    @Override
+    public String toString() {
+        return "Page{" +
+                "id=" + id +
+                ", site=" + site +
+                ", path='" + path + '\'' +
+                ", code=" + code +
+                ", content='" + content + '\'' +
+                '}';
     }
 }
