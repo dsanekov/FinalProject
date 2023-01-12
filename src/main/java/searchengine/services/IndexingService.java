@@ -37,7 +37,7 @@ public class IndexingService {
         String error = "Данная страница находится за пределами сайтов,указанных в конфигурационном файле";
         Set<String> allPages = new TreeSet<>();
         List<Site> sitesList = sites.getSites();
-        //deleteOldData(); TODO проблема с удалением
+        deleteOldData();
         for(Site site : sitesList){
             new Thread(()->{
                 LocalDateTime statusTime = LocalDateTime.now();

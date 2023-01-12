@@ -1,9 +1,11 @@
 package searchengine.model;
 import javax.persistence.*;
+import javax.persistence.Index;
 import java.util.Objects;
 import java.util.TreeSet;
 
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
