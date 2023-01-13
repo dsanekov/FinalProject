@@ -11,13 +11,12 @@ import searchengine.parser.PageLinksExtractor;
 import searchengine.model.SiteStatus;
 import searchengine.repositories.PageRepository;
 import searchengine.repositories.SiteRepository;
+import searchengine.utils.LemmaFinder;
 
+import java.io.IOException;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.*;
 import java.util.concurrent.ForkJoinPool;
 
 
@@ -30,6 +29,15 @@ public class IndexingService {
     private SiteRepository siteRepository;
     @Autowired
     private PageRepository pageRepository;
+    private LemmaFinder lemmaFinder;
+
+    {
+        try {
+            lemmaFinder = LemmaFinder.getInstance();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
 
     public void startIndexing() throws SQLException {
@@ -50,6 +58,31 @@ public class IndexingService {
         }
         //todo после индексации поменять у Site статус и время.
     }
+    public void indexingByUrl(String url){
+        if(urlExist(url)){
+            System.out.println("Данный сайт уже индексировали");
+        }
+        Set<String> allPages = new TreeSet<>();
+        new Thread(()->{
+            LocalDateTime statusTime = LocalDateTime.now();
+            searchengine.model.Site newSite = new searchengine.model.Site(SiteStatus.INDEXING, statusTime,"NULL",url,"Сайт без имени");
+            saveSite(newSite);
+            PageLinksExtractor extractor = new PageLinksExtractor(newSite.getUrl(), newSite,pageRepository);
+            Set<String> siteSet = new ForkJoinPool().invoke(extractor);
+            allPages.addAll(siteSet);
+        }).start();
+        Map<String, Integer> index = letsIndexPages(allPages);
+        for(String key : index.keySet()){
+            System.out.println(key + " - " + index.get(key));
+        }
+    }
+    private Map<String, Integer> letsIndexPages(Set<String> pages){
+        Map<String, Integer> lemmasMap = new HashMap<>();
+        for(String url : pages) {
+            lemmasMap.putAll(lemmaFinder.collectLemmas(url));
+        }
+        return lemmasMap;
+    }
 
     public void stopIndexing() throws SQLException{
         String[] result = { "true", "false" };
@@ -67,5 +100,13 @@ public class IndexingService {
     }
     private void saveSite(searchengine.model.Site site){
         siteRepository.save(site);
+    }
+    private boolean urlExist(String url){
+        for(Site site : sites.getSites()){
+            if(site.getUrl().equals(url)){
+                return true;
+            }
+        }
+        return false;
     }
 }

@@ -1,10 +1,9 @@
 package searchengine.controllers;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import searchengine.config.Site;
 import searchengine.config.SitesList;
 import searchengine.dto.statistics.StatisticsResponse;
@@ -36,5 +35,9 @@ public class ApiController {
     @GetMapping("/stopIndexing")
     public void stopIndexing() throws SQLException {
         indexingService.stopIndexing();//остановка обхода сайтов
+    }
+    @PostMapping("/indexPage")
+    public void indexPage(@RequestParam String url){
+        indexingService.indexingByUrl(url);
     }
 }
