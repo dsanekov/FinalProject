@@ -11,6 +11,7 @@ import searchengine.parser.PageLinksExtractor;
 import searchengine.model.SiteStatus;
 import searchengine.repositories.PageRepository;
 import searchengine.repositories.SiteRepository;
+import searchengine.utils.ClearHtmlTegs;
 import searchengine.utils.LemmaFinder;
 
 import java.io.IOException;
@@ -43,7 +44,7 @@ public class IndexingService {
     public void startIndexing() throws SQLException {
         String[] result = { "true", "false" };
         String error = "Данная страница находится за пределами сайтов,указанных в конфигурационном файле";
-        Set<String> allPages = new TreeSet<>();
+        List<Page> allPages = new ArrayList<>();
         List<Site> sitesList = sites.getSites();
         deleteOldData();
         for(Site site : sitesList){
@@ -52,34 +53,39 @@ public class IndexingService {
                 searchengine.model.Site newSite = new searchengine.model.Site(SiteStatus.INDEXING, statusTime,"NULL",site.getUrl(),site.getName());
                 saveSite(newSite);
                 PageLinksExtractor extractor = new PageLinksExtractor(newSite.getUrl(), newSite,pageRepository);
-                Set<String> siteSet = new ForkJoinPool().invoke(extractor);
+                List<Page> siteSet = new ForkJoinPool().invoke(extractor);
                 allPages.addAll(siteSet);
             }).start();
         }
         //todo после индексации поменять у Site статус и время.
     }
     public void indexingByUrl(String url){
+        System.out.println("индексируем по ссылке");
         if(urlExist(url)){
             System.out.println("Данный сайт уже индексировали");
         }
-        Set<String> allPages = new TreeSet<>();
-        new Thread(()->{
+            List<Page> allPages = new ArrayList<>();
             LocalDateTime statusTime = LocalDateTime.now();
             searchengine.model.Site newSite = new searchengine.model.Site(SiteStatus.INDEXING, statusTime,"NULL",url,"Сайт без имени");
             saveSite(newSite);
             PageLinksExtractor extractor = new PageLinksExtractor(newSite.getUrl(), newSite,pageRepository);
-            Set<String> siteSet = new ForkJoinPool().invoke(extractor);
-            allPages.addAll(siteSet);
-        }).start();
-        Map<String, Integer> index = letsIndexPages(allPages);
-        for(String key : index.keySet()){
-            System.out.println(key + " - " + index.get(key));
-        }
+            allPages = new ForkJoinPool().invoke(extractor);
+            Set<String> lines = new TreeSet<>();
+
+            for(Page page : allPages){
+                lines.add(page.getContent());
+            }
+            Map<String, Integer> map = new HashMap<>();
+            map = letsIndexPages(lines);
+            for (String k : map.keySet()){
+                System.out.println(k + " - " + map.get(k));
+            }
     }
     private Map<String, Integer> letsIndexPages(Set<String> pages){
         Map<String, Integer> lemmasMap = new HashMap<>();
         for(String url : pages) {
             lemmasMap.putAll(lemmaFinder.collectLemmas(url));
+            url = ClearHtmlTegs.clear(url,"title");
         }
         return lemmasMap;
     }

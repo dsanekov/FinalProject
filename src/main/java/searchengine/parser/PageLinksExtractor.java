@@ -17,7 +17,7 @@ import java.util.TreeSet;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.RecursiveTask;
 
-public class PageLinksExtractor extends RecursiveTask <Set<String>>  {
+public class PageLinksExtractor extends RecursiveTask <List<Page>>  {
     private String path;
     private Site site;
     @Autowired
@@ -31,8 +31,8 @@ public class PageLinksExtractor extends RecursiveTask <Set<String>>  {
     }
 
     @Override
-    protected Set<String> compute(){
-        TreeSet<String> set = new TreeSet<>();
+    protected List<Page> compute(){
+        List<Page> pageList = new ArrayList<>();
         List<PageLinksExtractor> taskList = new ArrayList<>();
         try {
             Thread.sleep(500);
@@ -60,7 +60,7 @@ public class PageLinksExtractor extends RecursiveTask <Set<String>>  {
                     System.out.println(url);
                     Page newPage = new Page(site,url,code,html);
                     pageRepository.save(newPage);
-                    set.add(url);
+                    pageList.add(newPage);
                     PageLinksExtractor task = new PageLinksExtractor(url,site,pageRepository);
                     task.fork();
                     taskList.add(task);
@@ -68,14 +68,14 @@ public class PageLinksExtractor extends RecursiveTask <Set<String>>  {
             }
 
             for (PageLinksExtractor task : taskList) {
-                set.addAll(task.join());
+                pageList.addAll(task.join());
             }
 
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
 
-        return set;
+        return pageList;
     }
 
     private boolean isPageInDB(String path){
