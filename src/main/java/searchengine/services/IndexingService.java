@@ -61,8 +61,6 @@ public class IndexingService {
                 String url = newSite.getUrl();
                 executorService.submit(new SiteIndexer(url,siteRepository,pageRepository,lemmaRepository,lemmaFinder, indexRepository, sites, newSite));
                 executorService.shutdown();
-                newSite.setStatus(SiteStatus.INDEXED);
-                newSite.setStatusTime(LocalDateTime.now());
             }).start();
         }
     }
@@ -73,8 +71,6 @@ public class IndexingService {
         searchengine.model.Site newSite = new searchengine.model.Site(SiteStatus.INDEXING, statusTime,"NULL",url,"Сайт без имени");
         executorService.submit(new SiteIndexer(url,siteRepository,pageRepository,lemmaRepository,lemmaFinder, indexRepository, sites, newSite));
         executorService.shutdown();
-        newSite.setStatus(SiteStatus.INDEXED);
-        newSite.setStatusTime(LocalDateTime.now());
     }
 
     public void stopIndexing() throws SQLException{

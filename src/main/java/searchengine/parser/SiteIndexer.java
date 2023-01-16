@@ -7,9 +7,9 @@ import searchengine.repositories.IndexRepository;
 import searchengine.repositories.LemmaRepository;
 import searchengine.repositories.PageRepository;
 import searchengine.repositories.SiteRepository;
-import searchengine.utils.ClearHtmlTegs;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,19 +49,39 @@ private searchengine.model.Site newSite;
         findLemmas(allPages);
     }
     private void findLemmas(List<Page> allPages){
-        Map<String,Integer> allLemmas = new HashMap<>();
+        List<String> allLemmasList = new ArrayList<>();
+
         for(Page page : allPages){
             String content = "";
             content += (ClearHtmlTegs.clear(page.getContent(),"title"));
+            content += " ";
             content += (ClearHtmlTegs.clear(page.getContent(),"body"));
-            Map<String, Integer> lemmas = getLemmas(content);
-            for(String key : lemmas.keySet()){
-                Lemma newlemma = new Lemma(page.getSite(),key,lemmas.get(key));//TODO здесь надо проверять есть ли лемма в базе и потом менять число на +1.
-                lemmaRepository.save(newlemma);
-                Index newIndex = new Index(page,newlemma,0.5F);//TODO здесь надо ранк как то менять
+            Map<String, Integer> lemmasOnPage = getLemmas(content);
+            allLemmasList.addAll(lemmasOnPage.keySet());
+            for(String key : lemmasOnPage.keySet()){
+                int frequency = 0;
+                Lemma newLemma = new Lemma(newSite,key,frequency);//todo сделать сохраннение списком а не по штучно
+                lemmaRepository.save(newLemma);
+                Index newIndex = new Index(page,newLemma,lemmasOnPage.get(key));
                 indexRepository.save(newIndex);
             }
         }
+        System.out.println("Начинаем обновлять частоту лемм");
+
+        List<Lemma> lemmaIterable = lemmaRepository.findAllContains(newSite.getId());//TODO частоту сделать не по базе а по спискам. и сохранять тоже пачкой. Можно например по 1000 лемм разом.
+        for(Lemma lFromDB : lemmaIterable){//TODO можно еще сделать тримап и проверять не с начала списка а с данного места, там же упорядоченно все
+            int frequency = 0;
+            for(Lemma lFromDB2 : lemmaIterable){
+                if(lFromDB.getLemma().equals(lFromDB2.getLemma())){
+                    frequency++;
+                }
+            }
+            lFromDB.setFrequency(frequency);
+            lemmaRepository.save(lFromDB);
+        }
+        System.out.println("Конец");
+        newSite.setStatus(SiteStatus.INDEXED);
+        newSite.setStatusTime(LocalDateTime.now());
     }
     private Map<String, Integer> getLemmas(String content){
         Map<String, Integer> lemmasMap = new HashMap<>();
