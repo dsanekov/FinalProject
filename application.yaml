@@ -22,8 +22,10 @@ indexing-settings:
 #      name: Skillbox
 #    - url: https://www.playback.ru/
 #      name: PlayBack.Ru
-    - url: https://skillbox.ru/
-      name: Skillbox
+#    - url: https://skillbox.ru/
+#      name: Skillbox
     - url: https://nikoartgallery.com/
-      name: Галерея
+      name: Галерея Нико
+    - url: https://et-cetera.ru/mobile/
+      name: Театр «Et Cetera»
 

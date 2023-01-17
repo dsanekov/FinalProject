@@ -55,22 +55,28 @@ public class IndexingService {
         List<Site> sitesList = sites.getSites();
         executorService = Executors.newFixedThreadPool(processorCoreCount);
         for(Site site : sitesList){
-            new Thread(()->{
-                LocalDateTime statusTime = LocalDateTime.now();
-                searchengine.model.Site newSite = new searchengine.model.Site(SiteStatus.INDEXING, statusTime,"NULL",site.getUrl(),site.getName());
-                String url = newSite.getUrl();
-                executorService.submit(new SiteIndexer(url,siteRepository,pageRepository,lemmaRepository,lemmaFinder, indexRepository, sites, newSite));
+                String url = site.getUrl();
+                executorService.submit(new SiteIndexer(url,siteRepository,pageRepository,lemmaRepository,lemmaFinder, indexRepository, sites));
                 executorService.shutdown();
-            }).start();
         }
     }
     public void indexingByUrl(String url){
-        System.out.println("индексируем по ссылке");
-        executorService = Executors.newFixedThreadPool(processorCoreCount);
-        LocalDateTime statusTime = LocalDateTime.now();
-        searchengine.model.Site newSite = new searchengine.model.Site(SiteStatus.INDEXING, statusTime,"NULL",url,"Сайт без имени");
-        executorService.submit(new SiteIndexer(url,siteRepository,pageRepository,lemmaRepository,lemmaFinder, indexRepository, sites, newSite));
-        executorService.shutdown();
+        if(urlCheck(url)){
+            System.out.println("Переиндексация - " + url);
+            executorService = Executors.newFixedThreadPool(processorCoreCount);
+            executorService.submit(new SiteIndexer(url,siteRepository,pageRepository,lemmaRepository,lemmaFinder, indexRepository, sites));
+            executorService.shutdown();
+        }
+
+    }
+    private boolean urlCheck(String url) {
+        List<Site> urlList = sites.getSites();
+        for (Site site : urlList) {
+            if (site.getUrl().equals(url)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public void stopIndexing() throws SQLException{

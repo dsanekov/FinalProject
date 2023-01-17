@@ -4,23 +4,18 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.beans.factory.annotation.Autowired;
-import searchengine.model.DBConnection;
 import searchengine.model.Page;
 import searchengine.model.Site;
 import searchengine.repositories.PageRepository;
 
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.RecursiveTask;
 
 public class PageLinksExtractor extends RecursiveTask <List<Page>>  {
     private String path;
     private Site site;
-    @Autowired
     private PageRepository pageRepository;
     private static final List<String> urlList = new CopyOnWriteArrayList<>();
 
@@ -45,27 +40,31 @@ public class PageLinksExtractor extends RecursiveTask <List<Page>>  {
             Elements link = doc.select("body").select("a");
             String html = doc.outerHtml();
             int code = doc.connection().response().statusCode();
+            List<Page> pageListForSave = new ArrayList<>();
             for (Element e : link) {
-                String url = e.attr("abs:href");
-                synchronized (urlList) {
+                String url = e.attr("abs:href").trim();
+
                     if (urlList.contains(url)) {
+                        System.out.println("ТУТ 0");
                         continue;
                     }
-                }
+                System.out.println("ТУТ 1");
                 if(url.startsWith(path)
                         && !url.contains("?")
                         && (url.charAt(url.length()-1) == '/')
-                        && !urlList.contains(url)) {
+                        ) {
+                    System.out.println("ТУТ 2");
                     urlList.add(url);
                     System.out.println(url);
                     Page newPage = new Page(site,url,code,html);
-                    pageRepository.save(newPage);
+                    pageListForSave.add(newPage);
                     pageList.add(newPage);
                     PageLinksExtractor task = new PageLinksExtractor(url,site,pageRepository);
                     task.fork();
                     taskList.add(task);
                 }
             }
+            pageRepository.saveAll(pageListForSave);
 
             for (PageLinksExtractor task : taskList) {
                 pageList.addAll(task.join());
@@ -76,15 +75,6 @@ public class PageLinksExtractor extends RecursiveTask <List<Page>>  {
         }
 
         return pageList;
-    }
-
-    private boolean isPageInDB(String path){
-        Iterable<Page> pageIterable = pageRepository.findAll();
-        for(Page p : pageIterable){
-            if(p.getPath().equals(path))
-                return true;
-        }
-        return false;
     }
 
 }

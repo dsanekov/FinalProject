@@ -1,6 +1,8 @@
 package searchengine.model;
 import javax.persistence.*;
 import javax.persistence.Index;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.TreeSet;
 
@@ -15,23 +17,25 @@ import org.jsoup.select.Elements;
 @Entity
 @Setter
 @Getter
-@Table(name = "Page", indexes = {@Index(columnList = "path, site_id", name = "path_index")})
+@Table(name = "page", indexes = {@Index(name = "path_list", columnList = "path")})
 public class Page {
     @Id
-    @GeneratedValue (strategy = GenerationType.AUTO)
+    @GeneratedValue (strategy = GenerationType.IDENTITY)
     private int id;
-    @ManyToOne (fetch = FetchType.LAZY)
-    @JoinColumn (name = "site_id", referencedColumnName = "id", nullable = false)
-    private Site site;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(nullable = false, name = "site_id", referencedColumnName = "id")
+    private Site siteId;
     @Column(columnDefinition = "VARCHAR(515)", nullable = false)
     private String path;
     @Column(nullable = false)
     private int code;
     @Column(length = 16777215, columnDefinition = "mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci")
     private String content;
+    @OneToMany(mappedBy = "page", cascade = CascadeType.ALL)
+    private List<searchengine.model.Index> indexList = new ArrayList<>();
 
     public Page(Site site, String path, int code, String content) {
-        this.site = site;
+        this.siteId = site;
         this.path = path;
         this.code = code;
         this.content = content;
@@ -69,19 +73,19 @@ public class Page {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Page page = (Page) o;
-        return id == page.id && code == page.code && Objects.equals(site, page.site) && Objects.equals(path, page.path) && Objects.equals(content, page.content);
+        return id == page.id && code == page.code && Objects.equals(siteId, page.siteId) && Objects.equals(path, page.path) && Objects.equals(content, page.content);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, site, path, code, content);
+        return Objects.hash(id, siteId, path, code, content);
     }
 
     @Override
     public String toString() {
         return "Page{" +
                 "id=" + id +
-                ", site=" + site +
+                ", site=" + siteId +
                 ", path='" + path + '\'' +
                 ", code=" + code +
                 ", content='" + content + '\'' +

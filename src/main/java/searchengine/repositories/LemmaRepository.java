@@ -13,4 +13,6 @@ public interface LemmaRepository extends CrudRepository<Lemma,Integer> {
 
     @Query(value = "SELECT * FROM search_engine.lemma WHERE `site_id` = :siteId", nativeQuery = true)
     List<Lemma> findAllContains(int siteId);
+    @Query(value = "DELETE FROM search_engine.lemma WHERE `site_id` = :siteId", nativeQuery = true)
+    void deleteAllBySiteId(int siteId);
 }

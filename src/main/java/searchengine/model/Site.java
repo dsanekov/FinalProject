@@ -5,6 +5,7 @@ import lombok.Setter;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
@@ -16,7 +17,7 @@ import java.util.Objects;
 @Table (name = "Site")
 public class Site {
     @Id
-    @GeneratedValue (strategy = GenerationType.AUTO)
+    @GeneratedValue (strategy = GenerationType.IDENTITY)
     private int id;
     @Enumerated (EnumType.STRING)
     @Column(columnDefinition = "ENUM('INDEXING', 'INDEXED', 'FAILED')", nullable = false)
@@ -29,8 +30,10 @@ public class Site {
     private String url;
     @Column(columnDefinition = "VARCHAR(255)", nullable = false)
     private String name;
-    @OneToMany (mappedBy = "site", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
-    private List<Page> pages;
+    @OneToMany (fetch = FetchType.LAZY, mappedBy = "siteId", cascade = CascadeType.ALL)
+    private List<Page> pages = new ArrayList<>();
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "siteId", cascade = CascadeType.ALL)
+    private List<Lemma> lemmas = new ArrayList<>();
 
     public Site(SiteStatus status, LocalDateTime statusTime, String lastError, String url, String name) {
         this.status = status;

@@ -9,10 +9,8 @@ import searchengine.repositories.PageRepository;
 import searchengine.repositories.SiteRepository;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ForkJoinPool;
 
 
@@ -23,11 +21,10 @@ private PageRepository pageRepository;
 private LemmaRepository lemmaRepository;
 private LemmaFinder lemmaFinder;
 private IndexRepository indexRepository;
-private final SitesList sites;
-private searchengine.model.Site newSite;
+private SitesList sites;
 
 
-    public SiteIndexer(String url, SiteRepository siteRepository, PageRepository pageRepository, LemmaRepository lemmaRepository, LemmaFinder lemmaFinder, IndexRepository indexRepository, SitesList sites, searchengine.model.Site newSite) {
+    public SiteIndexer(String url, SiteRepository siteRepository, PageRepository pageRepository, LemmaRepository lemmaRepository, LemmaFinder lemmaFinder, IndexRepository indexRepository, SitesList sites) {
         this.url = url;
         this.siteRepository = siteRepository;
         this.pageRepository = pageRepository;
@@ -35,41 +32,49 @@ private searchengine.model.Site newSite;
         this.lemmaFinder = lemmaFinder;
         this.indexRepository = indexRepository;
         this.sites = sites;
-        this.newSite = newSite;
     }
 
     @Override
     public void run() {
-        //deleteOldData(newSite); TODO проблема с удаланеним
+        if(siteRepository.findSiteByUrl(url) != null){
+            System.out.println("Удаляем старые данные из базы");
+            deleteOldData();
+        }
+        Site newSite = new Site(SiteStatus.INDEXING,LocalDateTime.now(),"NULL",url,getSiteNameByUrl());
         siteRepository.save(newSite);
-        PageLinksExtractor extractor = new PageLinksExtractor(newSite.getUrl(), newSite,pageRepository);
+        PageLinksExtractor extractor = new PageLinksExtractor(url,newSite,pageRepository);
         List<Page> allPages = new ForkJoinPool().invoke(extractor);
-        newSite.setStatus(SiteStatus.INDEXED);
-        newSite.setStatusTime(LocalDateTime.now());
-        findLemmas(allPages);
+        findLemmas(allPages, newSite);
     }
-    private void findLemmas(List<Page> allPages){
-        List<String> allLemmasList = new ArrayList<>();
+    private void findLemmas(List<Page> allPages, Site newSite){
 
         for(Page page : allPages){
+            List<Lemma> lemmaList = new CopyOnWriteArrayList<>();
+            List<Index> indexList = new CopyOnWriteArrayList<>();
             String content = "";
             content += (ClearHtmlTegs.clear(page.getContent(),"title"));
             content += " ";
             content += (ClearHtmlTegs.clear(page.getContent(),"body"));
-            Map<String, Integer> lemmasOnPage = getLemmas(content);
-            allLemmasList.addAll(lemmasOnPage.keySet());
+            Map<String, Integer> lemmasOnPage = new TreeMap<>(lemmaFinder.collectLemmas(content));
             for(String key : lemmasOnPage.keySet()){
                 int frequency = 0;
-                Lemma newLemma = new Lemma(newSite,key,frequency);//todo сделать сохраннение списком а не по штучно
-                lemmaRepository.save(newLemma);
+                Lemma newLemma = new Lemma(newSite,key,frequency);
+                lemmaList.add(newLemma);
                 Index newIndex = new Index(page,newLemma,lemmasOnPage.get(key));
-                indexRepository.save(newIndex);
+                indexList.add(newIndex);
             }
+            lemmaRepository.saveAll(lemmaList);
+            indexRepository.saveAll(indexList);
         }
+        updateLemmasFrequency(newSite);
+    }
+    private void updateLemmasFrequency(Site newSite){
         System.out.println("Начинаем обновлять частоту лемм");
 
-        List<Lemma> lemmaIterable = lemmaRepository.findAllContains(newSite.getId());//TODO частоту сделать не по базе а по спискам. и сохранять тоже пачкой. Можно например по 1000 лемм разом.
-        for(Lemma lFromDB : lemmaIterable){//TODO можно еще сделать тримап и проверять не с начала списка а с данного места, там же упорядоченно все
+        List<Lemma> lemmaIterable = lemmaRepository.findAllContains(newSite.getId());
+        List<Lemma> lemmaListForSave = new CopyOnWriteArrayList<>();
+        int counter = 0;
+        for(Lemma lFromDB : lemmaIterable){
             int frequency = 0;
             for(Lemma lFromDB2 : lemmaIterable){
                 if(lFromDB.getLemma().equals(lFromDB2.getLemma())){
@@ -77,27 +82,40 @@ private searchengine.model.Site newSite;
                 }
             }
             lFromDB.setFrequency(frequency);
-            lemmaRepository.save(lFromDB);
+            lemmaListForSave.add(lFromDB);
+            counter++;
+            if(counter == 1000){
+                counter = 0;
+                lemmaRepository.saveAll(lemmaListForSave);
+                lemmaListForSave.clear();
+            }
+        }
+        if(counter != 0){
+            lemmaRepository.saveAll(lemmaListForSave);
+            lemmaListForSave.clear();
         }
         System.out.println("Конец");
         newSite.setStatus(SiteStatus.INDEXED);
         newSite.setStatusTime(LocalDateTime.now());
-    }
-    private Map<String, Integer> getLemmas(String content){
-        Map<String, Integer> lemmasMap = new HashMap<>();
-        lemmasMap.putAll(lemmaFinder.collectLemmas(content));
-        return lemmasMap;
+        siteRepository.save(newSite);
     }
 
-    private void deleteOldData(Site newSite){
-        Iterable<searchengine.model.Site> siteIterable = siteRepository.findAll();
-        for(searchengine.model.Site s : siteIterable){
-                if(newSite.getUrl().equals(s.getUrl())){
-                    System.out.println("Удаляем из базы сайт с url - " + s.getUrl() + " id - " + s.getId());
-                    siteRepository.delete(s);
-                    break;
-                }
+    private void deleteOldData(){
+        Site site = siteRepository.findSiteByUrl(url);
+        site.setStatus(SiteStatus.INDEXING);
+        site.setName(getSiteNameByUrl());
+        site.setStatusTime(LocalDateTime.now());
+        siteRepository.save(site);
+        siteRepository.delete(site);
+    }
+    private String getSiteNameByUrl() {
+        List<searchengine.config.Site> siteList = sites.getSites();
+        for (searchengine.config.Site site : siteList) {
+            if (site.getUrl().equals(url)) {
+                return site.getName();
+            }
         }
+        return "";
     }
 
 }
