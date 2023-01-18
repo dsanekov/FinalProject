@@ -42,13 +42,19 @@ private SitesList sites;
         }
         Site newSite = new Site(SiteStatus.INDEXING,LocalDateTime.now(),"NULL",url,getSiteNameByUrl());
         siteRepository.save(newSite);
-        PageLinksExtractor extractor = new PageLinksExtractor(url,newSite,pageRepository);
-        List<Page> allPages = new ForkJoinPool().invoke(extractor);
+        ForkJoinPool forkJoinPool = new ForkJoinPool();
+        PageLinksExtractor extractor = new PageLinksExtractor(url,newSite,pageRepository,siteRepository);
+        List<Page> allPages = forkJoinPool.invoke(extractor);
+        forkJoinPool.shutdown();
+        extractor.clearUrlList();
         findLemmas(allPages, newSite);
     }
     private void findLemmas(List<Page> allPages, Site newSite){
 
         for(Page page : allPages){
+            if(page.getCode()/100 == 4 || page.getCode()/100 == 5){
+                continue;
+            }
             List<Lemma> lemmaList = new CopyOnWriteArrayList<>();
             List<Index> indexList = new CopyOnWriteArrayList<>();
             String content = "";

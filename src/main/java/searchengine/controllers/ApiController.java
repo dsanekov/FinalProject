@@ -1,12 +1,11 @@
 package searchengine.controllers;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import searchengine.config.Site;
-import searchengine.config.SitesList;
 import searchengine.dto.statistics.StatisticsResponse;
+import searchengine.dto.statistics.SuccessfulResponse;
+import searchengine.dto.statistics.UnsuccessfulResponse;
 import searchengine.services.IndexingService;
 import searchengine.services.StatisticsService;
 
@@ -29,15 +28,35 @@ public class ApiController {
         return ResponseEntity.ok(statisticsService.getStatistics());
     }
     @GetMapping("/startIndexing")
-    public void startIndexing() throws SQLException {
-        indexingService.startIndexing();//старт обхода сайтов
+    public ResponseEntity<Object> startIndexing(){
+        if(indexingService.startIndexingAllSites()){
+            return new ResponseEntity<>(new SuccessfulResponse(true),HttpStatus.OK);
+        }
+        return new ResponseEntity<>(new UnsuccessfulResponse(false,"Индексация уже запущена"),HttpStatus.BAD_REQUEST);
     }
     @GetMapping("/stopIndexing")
-    public void stopIndexing() throws SQLException {
-        indexingService.stopIndexing();//остановка обхода сайтов
+    public ResponseEntity<Object> stopIndexing(){
+        if(indexingService.stopIndexing()){
+            return new ResponseEntity<>(new SuccessfulResponse(true),HttpStatus.OK);
+        }
+        return new ResponseEntity<>(new UnsuccessfulResponse(false,"Индексация не запущена"),HttpStatus.BAD_REQUEST);
     }
     @PostMapping("/indexPage")
-    public void indexPage(@RequestParam String url){
-        indexingService.indexingByUrl(url);
+    public ResponseEntity<Object> indexPage(@RequestParam String url){
+        if(indexingService.startIndexingByUrl(url)){
+            return new ResponseEntity<>(new SuccessfulResponse(true),HttpStatus.OK);
+        }
+        return new ResponseEntity<>(new UnsuccessfulResponse(false,"Данная страница находится за пределами сайтов, указанных в конфигурационном файле"),HttpStatus.BAD_REQUEST);
+    }
+    @GetMapping("/search")
+    public ResponseEntity<Object> search(@RequestParam(name = "query") String query,
+                                         @RequestParam(name = "site",required = false, defaultValue = "") String site,
+                                         @RequestParam(name = "offset", required = false, defaultValue = "0") int offset,
+                                         @RequestParam(name = "limit", required = false, defaultValue = "20") int limit){
+        if(query.isEmpty()){
+            return new ResponseEntity<>(new UnsuccessfulResponse(false,"Задан пустой поисковый запрос"),HttpStatus.BAD_REQUEST);
+        }
+        return new ResponseEntity<>(new SuccessfulResponse(true),HttpStatus.OK);
+        //todo доделать ответ на запрос. Создать класс для ответа, как было со статистикой.
     }
 }

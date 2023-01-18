@@ -7,7 +7,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import searchengine.model.Page;
 import searchengine.model.Site;
 import searchengine.repositories.PageRepository;
+import searchengine.repositories.SiteRepository;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -17,12 +19,14 @@ public class PageLinksExtractor extends RecursiveTask <List<Page>>  {
     private String path;
     private Site site;
     private PageRepository pageRepository;
-    private static final List<String> urlList = new CopyOnWriteArrayList<>();
+    private SiteRepository siteRepository;
+    private static List<String> urlList = new CopyOnWriteArrayList<>();
 
-    public PageLinksExtractor(String path,Site site, PageRepository pageRepository) {
+    public PageLinksExtractor(String path,Site site, PageRepository pageRepository, SiteRepository siteRepository) {
         this.path = path;
         this.site = site;
         this.pageRepository = pageRepository;
+        this.siteRepository = siteRepository;
     }
 
     @Override
@@ -45,26 +49,25 @@ public class PageLinksExtractor extends RecursiveTask <List<Page>>  {
                 String url = e.attr("abs:href").trim();
 
                     if (urlList.contains(url)) {
-                        System.out.println("ТУТ 0");
                         continue;
                     }
-                System.out.println("ТУТ 1");
                 if(url.startsWith(path)
                         && !url.contains("?")
                         && (url.charAt(url.length()-1) == '/')
                         ) {
-                    System.out.println("ТУТ 2");
                     urlList.add(url);
                     System.out.println(url);
                     Page newPage = new Page(site,url,code,html);
                     pageListForSave.add(newPage);
                     pageList.add(newPage);
-                    PageLinksExtractor task = new PageLinksExtractor(url,site,pageRepository);
+                    PageLinksExtractor task = new PageLinksExtractor(url,site,pageRepository,siteRepository);
                     task.fork();
                     taskList.add(task);
                 }
             }
             pageRepository.saveAll(pageListForSave);
+            site.setStatusTime(LocalDateTime.now());
+            siteRepository.save(site);
 
             for (PageLinksExtractor task : taskList) {
                 pageList.addAll(task.join());
@@ -75,6 +78,9 @@ public class PageLinksExtractor extends RecursiveTask <List<Page>>  {
         }
 
         return pageList;
+    }
+    public void clearUrlList(){
+        urlList = new CopyOnWriteArrayList<>();
     }
 
 }

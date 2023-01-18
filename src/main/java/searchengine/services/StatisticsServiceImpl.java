@@ -2,13 +2,17 @@ package searchengine.services;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import searchengine.config.Site;
 import searchengine.config.SitesList;
 import searchengine.dto.statistics.DetailedStatisticsItem;
 import searchengine.dto.statistics.StatisticsData;
 import searchengine.dto.statistics.StatisticsResponse;
 import searchengine.dto.statistics.TotalStatistics;
+import searchengine.model.Site;
+import searchengine.repositories.LemmaRepository;
+import searchengine.repositories.PageRepository;
+import searchengine.repositories.SiteRepository;
 
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -19,6 +23,10 @@ public class StatisticsServiceImpl implements StatisticsService {
 
     private final Random random = new Random();
     private final SitesList sites;
+    private final PageRepository pageRepository;
+    private final SiteRepository siteRepository;
+    private final LemmaRepository lemmaRepository;
+    private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     @Override
     public StatisticsResponse getStatistics() {
@@ -30,26 +38,25 @@ public class StatisticsServiceImpl implements StatisticsService {
         };
 
         TotalStatistics total = new TotalStatistics();
-        total.setSites(sites.getSites().size());
         total.setIndexing(true);
+        total.setLemmas((int) lemmaRepository.count());
+        total.setSites((int) siteRepository.count());
+        total.setPages((int) pageRepository.count());
 
         List<DetailedStatisticsItem> detailed = new ArrayList<>();
-        List<Site> sitesList = sites.getSites();
-        for(int i = 0; i < sitesList.size(); i++) {
-            Site site = sitesList.get(i);
+        Iterable<Site> siteIterable = siteRepository.findAll();
+
+        for(Site site : siteIterable){
             DetailedStatisticsItem item = new DetailedStatisticsItem();
             item.setName(site.getName());
             item.setUrl(site.getUrl());
-            int pages = random.nextInt(1_000);
-            int lemmas = pages * random.nextInt(1_000);
-            item.setPages(pages);
-            item.setLemmas(lemmas);
-            item.setStatus(statuses[i % 3]);
-            item.setError(errors[i % 3]);
-            item.setStatusTime(System.currentTimeMillis() -
-                    (random.nextInt(10_000)));
-            total.setPages(total.getPages() + pages);
-            total.setLemmas(total.getLemmas() + lemmas);
+            long pages = pageRepository.countBySiteId(site);
+            long lemmas = lemmaRepository.countBySiteId(site);
+            item.setPages((int)pages);
+            item.setLemmas((int)lemmas);
+            item.setStatus(site.getStatus().toString());
+            item.setError(site.getLastError());
+            item.setStatusTime(site.getStatusTime().format(formatter));
             detailed.add(item);
         }
 
