@@ -7,11 +7,14 @@ import searchengine.model.Lemma;
 import searchengine.model.Site;
 
 import java.util.List;
+import java.util.Set;
 
 @Repository
 public interface LemmaRepository extends CrudRepository<Lemma,Integer> {
 
     @Query(value = "SELECT * FROM search_engine.lemma WHERE `site_id` = :siteId", nativeQuery = true)
     List<Lemma> findAllContains(int siteId);
+    @Query(value = "SELECT * FROM search_engine.lemma WHERE lemma IN :lemmaList AND `site_id` = :siteId", nativeQuery = true)
+    List<Lemma> findLemmaListBySetAndSite(Set<String> lemmaList, Site site);
     long countBySiteId(Site siteId);
 }
