@@ -7,9 +7,8 @@ import searchengine.dto.statistics.StatisticsResponse;
 import searchengine.dto.statistics.SuccessfulResponse;
 import searchengine.dto.statistics.UnsuccessfulResponse;
 import searchengine.services.IndexingService;
+import searchengine.services.SearchService;
 import searchengine.services.StatisticsService;
-
-import java.sql.SQLException;
 
 @RestController
 @RequestMapping("/api")
@@ -17,10 +16,12 @@ public class ApiController {
 
     private final StatisticsService statisticsService;
     private final IndexingService indexingService;
+    private final SearchService searchService;
 
-    public ApiController(StatisticsService statisticsService, IndexingService indexingService) {
+    public ApiController(StatisticsService statisticsService, IndexingService indexingService, SearchService searchService) {
         this.statisticsService = statisticsService;
         this.indexingService = indexingService;
+        this.searchService = searchService;
     }
 
     @GetMapping("/statistics")
@@ -55,6 +56,9 @@ public class ApiController {
                                          @RequestParam(name = "limit", required = false, defaultValue = "20") int limit){
         if(query.isEmpty()){
             return new ResponseEntity<>(new UnsuccessfulResponse(false,"Задан пустой поисковый запрос"),HttpStatus.BAD_REQUEST);
+        }
+        if(site.isEmpty()){
+            searchService.searchAllSites(query,offset,limit);
         }
         return new ResponseEntity<>(new SuccessfulResponse(true),HttpStatus.OK);
         //todo доделать ответ на запрос. Создать класс для ответа, как было со статистикой.

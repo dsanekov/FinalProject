@@ -54,25 +54,29 @@ public class SearchServiceImpl implements SearchService{
         return resultList;
     }
     private List<SearchObject> searchStarter(String query, String siteUrl, int offset, int limit){
+        System.out.println("Начали поиск по запросу - " + query);
         List<SearchObject> searchObjectList = new ArrayList<>();
         Map<String, Integer> lemmasOnPage = new TreeMap<>(lemmaFinder.collectLemmas(query));
         Site site = siteRepository.findSiteByUrl(siteUrl);
         List<Lemma> lemmaList = lemmaRepository.findLemmaListBySetAndSite(lemmasOnPage.keySet(),site);
         lemmaList.sort(Comparator.comparing(Lemma::getFrequency));
-        List<Page> pageListByLemmas = pageRepository.findPagesByLemmas(lemmaList);
-        System.out.println("Проверка! Размер pageListByLemmas - " + pageListByLemmas.size());
+        List<Page> pageListByRareLemma = pageRepository.findPagesByLemmas(lemmaList.get(0));
+        System.out.println("Проверка! Размер pageListByRareLemma - " + pageListByRareLemma.size());
 
-        for(Lemma lemma : lemmaList){
-            pageListByLemmas = pageRepository.findPagesByLemma(lemma, pageListByLemmas);
-            System.out.println("Проверка! Размер pageListByLemmas в цикле - " + pageListByLemmas.size());
+        for (int i = 1; i < lemmaList.size(); i++) {
+            for (int j = 0; j < pageListByRareLemma.size(); j++) {
+                if(indexRepository.countByLemmaIdAndPageList(lemmaList.get(i),pageListByRareLemma.get(j)) <= 0){
+                    pageListByRareLemma.remove(j);
+                }
+            }
         }
-        if(pageListByLemmas.size() == 0){
-            System.out.println("Размер pageListByLemmas равен 0");
+        if(pageListByRareLemma.size() == 0){
+            System.out.println("Размер pageListByRareLemma равен 0");
             return searchObjectList;
         }
 
-        List<Index> indexList = indexRepository.findIndexListByLemmasAndPages(lemmasOnPage.keySet(),pageListByLemmas);
-        Map <Page, Float> pageRelevanceMap = getPageAbsRelevance(pageListByLemmas,indexList);
+        List<Index> indexList = indexRepository.findIndexListByLemmasAndPages(lemmasOnPage.keySet(),pageListByRareLemma);
+        Map <Page, Float> pageRelevanceMap = getPageAbsRelevance(pageListByRareLemma,indexList);
         //todo здесь конец
         return searchObjectList;
     }
