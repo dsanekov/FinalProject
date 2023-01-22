@@ -54,22 +54,42 @@ public class SearchServiceImpl implements SearchService{
         return resultList;
     }
     private List<SearchObject> searchStarter(String query, String siteUrl, int offset, int limit){
-        System.out.println("Начали поиск по запросу - " + query);
+        System.out.println("Начали поиск по запросу - " + query + " Для сайта - " + siteUrl);
         List<SearchObject> searchObjectList = new ArrayList<>();
         Map<String, Integer> lemmasOnPage = new TreeMap<>(lemmaFinder.collectLemmas(query));
+        System.out.println("Размер мапы lemmasOnPage - " + lemmasOnPage.keySet().size());
         Site site = siteRepository.findSiteByUrl(siteUrl);
-        List<Lemma> lemmaList = lemmaRepository.findLemmaListBySetAndSite(lemmasOnPage.keySet(),site);
+        List<Lemma> lemmaList = lemmaRepository.findLemmaListBySetAndSite(lemmasOnPage.keySet(),site.getId());
         lemmaList.sort(Comparator.comparing(Lemma::getFrequency));
-        List<Page> pageListByRareLemma = pageRepository.findPagesByLemmas(lemmaList.get(0));
-        System.out.println("Проверка! Размер pageListByRareLemma - " + pageListByRareLemma.size());
-
+        System.out.println("____________________________________");
+        for(Lemma lemma : lemmaList){
+            System.out.println(lemma.getLemma() + " " + lemma.getFrequency());
+        }
+        System.out.println("____________________________________");
+        if(lemmaList.size() == 0){
+            System.out.println("Размер lemmaList равен 0. Site - " + siteUrl);
+            return searchObjectList;
+        }
+        System.out.println("Размер lemmaList равен - " + lemmaList.size());
+        List<Page> pageListByRareLemma = pageRepository.findPagesByLemmaId(lemmaList.get(0).getId());
+        System.out.println("_____________________");
+        System.out.println("Размер pageListByRareLemma - " + pageListByRareLemma.size());
+        for (Page page : pageListByRareLemma){
+            System.out.println("PageId - " + page.getId());
+        }
+        System.out.println("___________________");
+        if(pageListByRareLemma.size() == 0){
+            return searchObjectList;
+        }
         for (int i = 1; i < lemmaList.size(); i++) {
             for (int j = 0; j < pageListByRareLemma.size(); j++) {
-                if(indexRepository.countByLemmaIdAndPageList(lemmaList.get(i),pageListByRareLemma.get(j)) <= 0){
+                if(indexRepository.countByLemmaContentAndPageId(lemmaList.get(i).getLemma(), pageListByRareLemma.get(j).getId()).size() == 0){
                     pageListByRareLemma.remove(j);
                 }
             }
         }
+        //todo здесь косяк
+        System.out.println("Размер pageListByRareLemma после иттерация - " + pageListByRareLemma.size());
         if(pageListByRareLemma.size() == 0){
             System.out.println("Размер pageListByRareLemma равен 0");
             return searchObjectList;

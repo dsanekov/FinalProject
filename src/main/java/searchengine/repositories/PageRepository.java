@@ -7,7 +7,6 @@ import searchengine.model.Lemma;
 import searchengine.model.Page;
 import searchengine.model.Site;
 
-import java.util.Collection;
 import java.util.List;
 
 @Repository
@@ -16,8 +15,8 @@ public interface PageRepository extends CrudRepository<Page,Integer> {
     List<Page> findAllBySiteId(int siteId);
 
     long countBySiteId(Site siteId);
-    @Query(value = "SELECT * FROM Page p JOIN Words_index i ON p.id = i.page_id WHERE i.lemma_id = :lemma", nativeQuery = true)
-    List<Page> findPagesByLemmas(Lemma lemma);
+    @Query(value = "SELECT * FROM Page p JOIN Words_index i ON p.id = i.page_id WHERE i.lemma_id = :lemmaId", nativeQuery = true)
+    List<Page> findPagesByLemmaId(int lemmaId);
     @Query(value = "SELECT * FROM Page p JOIN Words_index i ON p.id = i.page_id WHERE i.lemma_id = :lemma AND p.page_id IN :pages", nativeQuery = true)
     List<Page> findPagesByLemma(Lemma lemma, List<Page> pages);
 }
