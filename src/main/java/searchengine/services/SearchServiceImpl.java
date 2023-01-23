@@ -75,8 +75,9 @@ public class SearchServiceImpl implements SearchService{
     private List<Lemma> deleteFrequentLemmas(List<Lemma> foundLemmaList, Site site){
         long allPagesCount = pageRepository.countBySiteId(site);
         float percentOFPages = 0.2f;
+        long maxCount = (long) (allPagesCount*percentOFPages);
         for(Lemma lemma : foundLemmaList){
-            if(indexRepository.countByLemmaId(lemma.getId()) > allPagesCount*percentOFPages){
+            if(indexRepository.countByLemmaId(lemma.getId()) > maxCount){
                 System.out.println("Удаляем частую лемму");
                 foundLemmaList.remove(lemma);
             }
@@ -124,7 +125,7 @@ public class SearchServiceImpl implements SearchService{
         List<String> wordsList = getWordsFromContent(content, lemmaIndex);
         for (int i = 0; i < wordsList.size(); i++) {
             result.append(wordsList.get(i)).append("... ");
-            if (i > 3) {
+            if (i > 4) {
                 break;
             }
         }

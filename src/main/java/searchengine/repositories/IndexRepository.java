@@ -21,4 +21,6 @@ public interface IndexRepository extends CrudRepository<Index,Integer> {
     long countByLemmaIdAndPageId(int lemmaId, int pageId);
     @Query(value = "SELECT i.* FROM search_engine.words_index i JOIN search_engine.lemma l ON i.lemma_id = l.id WHERE l.lemma = ':lemmaContent' AND i.page_id = :pageId", nativeQuery = true)
     List<Index> countByLemmaContentAndPageId(String lemmaContent, int pageId);
+    @Query(value = "SELECT i.* FROM search_engine.words_index i JOIN search_engine.lemma l ON i.lemma_id = l.id HAVING COUNT(*) > :maxCount AND WHERE l.site_id = :siteId", nativeQuery = true)
+    List<Index> findByMaxCount(long maxCount, int siteId);
 }
