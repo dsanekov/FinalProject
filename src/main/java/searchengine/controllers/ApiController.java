@@ -3,12 +3,14 @@ package searchengine.controllers;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import searchengine.dto.statistics.StatisticsResponse;
-import searchengine.dto.statistics.SuccessfulResponse;
-import searchengine.dto.statistics.UnsuccessfulResponse;
+import searchengine.dto.statistics.*;
+import searchengine.repositories.SiteRepository;
 import searchengine.services.IndexingService;
 import searchengine.services.SearchService;
 import searchengine.services.StatisticsService;
+
+import java.io.IOException;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api")
@@ -17,11 +19,13 @@ public class ApiController {
     private final StatisticsService statisticsService;
     private final IndexingService indexingService;
     private final SearchService searchService;
+    private final SiteRepository siteRepository;
 
-    public ApiController(StatisticsService statisticsService, IndexingService indexingService, SearchService searchService) {
+    public ApiController(StatisticsService statisticsService, IndexingService indexingService, SearchService searchService, SiteRepository siteRepository) {
         this.statisticsService = statisticsService;
         this.indexingService = indexingService;
         this.searchService = searchService;
+        this.siteRepository = siteRepository;
     }
 
     @GetMapping("/statistics")
@@ -53,14 +57,22 @@ public class ApiController {
     public ResponseEntity<Object> search(@RequestParam(name = "query") String query,
                                          @RequestParam(name = "site",required = false, defaultValue = "") String site,
                                          @RequestParam(name = "offset", required = false, defaultValue = "0") int offset,
-                                         @RequestParam(name = "limit", required = false, defaultValue = "20") int limit){
+                                         @RequestParam(name = "limit", required = false, defaultValue = "20") int limit) throws IOException {
         if(query.isEmpty()){
             return new ResponseEntity<>(new UnsuccessfulResponse(false,"Задан пустой поисковый запрос"),HttpStatus.BAD_REQUEST);
         }
-        if(site.isEmpty()){
-            searchService.searchAllSites(query,offset,limit);
+        if(!site.isEmpty() && siteRepository.findSiteByUrl(site) == null){
+            return new ResponseEntity<>(new UnsuccessfulResponse(false,"Указанная страница не найдена"),HttpStatus.NOT_FOUND);
         }
-        return new ResponseEntity<>(new SuccessfulResponse(true),HttpStatus.OK);
-        //todo доделать ответ на запрос. Создать класс для ответа, как было со статистикой.
+        if(!site.isEmpty() && siteRepository.findSiteByUrl(site) != null){
+            List<SearchObject> searchObjectList = searchService.searchOnSite(query, site, offset, limit);
+            return new ResponseEntity<>(new SearchResponse(true,searchObjectList.size(),searchObjectList),HttpStatus.OK);
+        }
+
+        List<SearchObject> searchObjectList = searchService.searchAllSites(query, offset, limit);
+        if(searchObjectList == null){
+            return new ResponseEntity<>(new UnsuccessfulResponse(false,"Указанная страница не найдена"),HttpStatus.NOT_FOUND);
+        }
+        return new ResponseEntity<>(new SearchResponse(true,searchObjectList.size(),searchObjectList),HttpStatus.OK);
     }
 }

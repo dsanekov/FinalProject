@@ -8,12 +8,12 @@ import searchengine.model.Index;
 import searchengine.model.Lemma;
 import searchengine.model.Page;
 import searchengine.model.Site;
+import searchengine.parser.ClearHtmlTegs;
 import searchengine.parser.LemmaFinder;
 import searchengine.repositories.IndexRepository;
 import searchengine.repositories.LemmaRepository;
 import searchengine.repositories.PageRepository;
 import searchengine.repositories.SiteRepository;
-
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -21,7 +21,6 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class SearchServiceImpl implements SearchService{
-    private LemmaFinder lemmaFinder;
     @Autowired
     private final SiteRepository siteRepository;
     @Autowired
@@ -30,93 +29,188 @@ public class SearchServiceImpl implements SearchService{
     private final LemmaRepository lemmaRepository;
     @Autowired
     private final IndexRepository indexRepository;
-    {
-        try {
-            lemmaFinder = LemmaFinder.getInstance();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
     @Override
-    public List<SearchObject> searchOnSite(String query, String site, int offset, int limit) {
-
-        return searchStarter(query, site, offset, limit);
-    }
-
-    @Override
-    public List<SearchObject> searchAllSites(String query, int offset, int limit) {
+    public List<SearchObject> searchAllSites(String query, int offset, int limit) throws IOException {
+        System.out.println("Начинаем поиск по всем сайтам");
         Iterable<Site> siteIterable = siteRepository.findAll();
         List<SearchObject> resultList = new ArrayList<>();
-
+        List<Lemma> foundLemmaList = new ArrayList<>();
+        Set<String> textLemmaSet = LemmaFinder.getInstance().getLemmaSet(query);
+        for (Site site : siteIterable) {
+            foundLemmaList.addAll(getLemmaListFromSite(textLemmaSet, site));
+        }
         for(Site site : siteIterable){
-            resultList.addAll(searchStarter(query,site.getUrl(),offset,limit));
-        }
-        return resultList;
-    }
-    private List<SearchObject> searchStarter(String query, String siteUrl, int offset, int limit){
-        System.out.println("Начали поиск по запросу - " + query + " Для сайта - " + siteUrl);
-        List<SearchObject> searchObjectList = new ArrayList<>();
-        Map<String, Integer> lemmasOnPage = new TreeMap<>(lemmaFinder.collectLemmas(query));
-        System.out.println("Размер мапы lemmasOnPage - " + lemmasOnPage.keySet().size());
-        Site site = siteRepository.findSiteByUrl(siteUrl);
-        List<Lemma> lemmaList = lemmaRepository.findLemmaListBySetAndSite(lemmasOnPage.keySet(),site.getId());
-        lemmaList.sort(Comparator.comparing(Lemma::getFrequency));
-        System.out.println("____________________________________");
-        for(Lemma lemma : lemmaList){
-            System.out.println(lemma.getLemma() + " " + lemma.getFrequency());
-        }
-        System.out.println("____________________________________");
-        if(lemmaList.size() == 0){
-            System.out.println("Размер lemmaList равен 0. Site - " + siteUrl);
-            return searchObjectList;
-        }
-        System.out.println("Размер lemmaList равен - " + lemmaList.size());
-        List<Page> pageListByRareLemma = pageRepository.findPagesByLemmaId(lemmaList.get(0).getId());
-        System.out.println("_____________________");
-        System.out.println("Размер pageListByRareLemma - " + pageListByRareLemma.size());
-        for (Page page : pageListByRareLemma){
-            System.out.println("PageId - " + page.getId());
-        }
-        System.out.println("___________________");
-        if(pageListByRareLemma.size() == 0){
-            return searchObjectList;
-        }
-        for (int i = 1; i < lemmaList.size(); i++) {
-            for (int j = 0; j < pageListByRareLemma.size(); j++) {
-                if(indexRepository.countByLemmaContentAndPageId(lemmaList.get(i).getLemma(), pageListByRareLemma.get(j).getId()).size() == 0){
-                    pageListByRareLemma.remove(j);
-                }
-            }
-        }
-        //todo здесь косяк
-        System.out.println("Размер pageListByRareLemma после иттерация - " + pageListByRareLemma.size());
-        if(pageListByRareLemma.size() == 0){
-            System.out.println("Размер pageListByRareLemma равен 0");
-            return searchObjectList;
+            foundLemmaList = deleteFrequentLemmas(foundLemmaList,site);
         }
 
-        List<Index> indexList = indexRepository.findIndexListByLemmasAndPages(lemmasOnPage.keySet(),pageListByRareLemma);
-        Map <Page, Float> pageRelevanceMap = getPageAbsRelevance(pageListByRareLemma,indexList);
-        //todo здесь конец
-        return searchObjectList;
-    }
-    private Map <Page, Float> getPageAbsRelevance(List<Page> pageList, List<Index> indexList){
-        Map <Page, Float> pageRelevanceMap = new HashMap<>();
-        for(Page page : pageList){
-            float relevancy = 0;
-            for(Index index : indexList){
-                if (index.getPage() == page) {
-                    relevancy += index.getRank();
+        List<SearchObject> searchData = new ArrayList<>();
+        for (Lemma l : foundLemmaList) {
+            for(String lemmaQuery : textLemmaSet) {
+                if (l.getLemma().equals(lemmaQuery)) {
+                    searchData.addAll(getSearchDtoList(foundLemmaList, textLemmaSet, offset, limit));
+                    searchData.sort((o1, o2) -> Float.compare(o2.getRelevance(), o1.getRelevance()));
+                    if (searchData.size() > limit) {
+                        for (int i = offset; i < limit; i++) {
+                            resultList.add(searchData.get(i));
+                        }
+
+                        System.out.println("Поиск по всем сайтам завершен");
+                        return resultList;
+                    }
                 }
             }
-            pageRelevanceMap.put(page,relevancy);
         }
-        Map <Page, Float> pageAbsRelevanceMap = new HashMap<>();
-        for(Page page : pageRelevanceMap.keySet()){
-            float absRelevancy = pageRelevanceMap.get(page) / Collections.max(pageRelevanceMap.values());
-            pageAbsRelevanceMap.put(page,absRelevancy);
+        System.out.println("Поиск по всем сайтам завершен");
+        return searchData;
+    }
+
+    @Override
+    public List<SearchObject> searchOnSite(String query, String url, int offset, int limit) throws IOException {
+        System.out.println("Начинаем поиск по сайту - " + url);
+        Site site = siteRepository.findSiteByUrl(url);
+        Set<String> textLemmaSet = LemmaFinder.getInstance().getLemmaSet(query);
+        List<Lemma> foundLemmaList = getLemmaListFromSite(textLemmaSet, site);
+        return getSearchDtoList(deleteFrequentLemmas(foundLemmaList,site), textLemmaSet, offset, limit);
+    }
+    private List<Lemma> deleteFrequentLemmas(List<Lemma> foundLemmaList, Site site){
+        long allPagesCount = pageRepository.countBySiteId(site);
+        float percentOFPages = 0.2f;
+        for(Lemma lemma : foundLemmaList){
+            if(indexRepository.countByLemmaId(lemma.getId()) > allPagesCount*percentOFPages){
+                System.out.println("Удаляем частую лемму");
+                foundLemmaList.remove(lemma);
+            }
         }
-        return pageAbsRelevanceMap.entrySet().stream().sorted(Map.Entry.comparingByValue(Comparator.reverseOrder())).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, Hashtable::new));
+        return foundLemmaList;
+    }
+
+    private List<Lemma> getLemmaListFromSite(Set<String> lemmas, Site site) {
+        List<Lemma> lemmaList = lemmaRepository.findLemmaListBySetAndSite(lemmas, site.getId());
+        List<Lemma> result = new ArrayList<>(lemmaList);
+        result.sort(Comparator.comparingInt(Lemma::getFrequency));
+        return result;
+    }
+
+    private List<SearchObject> getSearchData(Hashtable<Page, Float> pageList, Set<String> textLemmaList) throws IOException {
+        List<SearchObject> result = new ArrayList<>();
+
+        for (Page page : pageList.keySet()) {
+            String uri = page.getPath();
+            String content = page.getContent();
+            Site pageSite = page.getSiteId();
+            String site = pageSite.getUrl();
+            String siteName = pageSite.getName();
+            Float absRelevance = pageList.get(page);
+
+            StringBuilder clearContent = new StringBuilder();
+            String title = ClearHtmlTegs.clear(content, "title");
+            String body = ClearHtmlTegs.clear(content, "body");
+            clearContent.append(title).append(" ").append(body);
+            String snippet = getSnippet(clearContent.toString(), textLemmaList);
+
+            result.add(new SearchObject(site, siteName, uri, title, snippet, absRelevance));
+        }
+        return result;
+    }
+
+    private String getSnippet(String content, Set<String> lemmaSet) throws IOException {
+
+        List<Integer> lemmaIndex = new ArrayList<>();
+        StringBuilder result = new StringBuilder();
+        for (String lemma : lemmaSet) {
+            lemmaIndex.addAll(LemmaFinder.getInstance().findLemmaIndexInText(content, lemma));
+        }
+        Collections.sort(lemmaIndex);
+        List<String> wordsList = getWordsFromContent(content, lemmaIndex);
+        for (int i = 0; i < wordsList.size(); i++) {
+            result.append(wordsList.get(i)).append("... ");
+            if (i > 3) {
+                break;
+            }
+        }
+        return result.toString();
+    }
+
+    private List<String> getWordsFromContent(String content, List<Integer> lemmaIndex) {
+        List<String> result = new ArrayList<>();
+        for (int i = 0; i < lemmaIndex.size(); i++) {
+            int start = lemmaIndex.get(i);
+            int end = content.indexOf(" ", start);
+            int nextPoint = i + 1;
+            while (nextPoint < lemmaIndex.size() && lemmaIndex.get(nextPoint) - end > 0 && lemmaIndex.get(nextPoint) - end < 5) {
+                end = content.indexOf(" ", lemmaIndex.get(nextPoint));
+                nextPoint += 1;
+            }
+            i = nextPoint - 1;
+            String text = getWordsFromIndex(start, end, content);
+            result.add(text);
+        }
+        result.sort(Comparator.comparingInt(String::length).reversed());
+        return result;
+    }
+
+    private String getWordsFromIndex(int start, int end, String content) {
+        String word = content.substring(start, end);
+        int prevPoint;
+        int lastPoint;
+        if (content.lastIndexOf(" ", start) != -1) {
+            prevPoint = content.lastIndexOf(" ", start);
+        } else prevPoint = start;
+        if (content.indexOf(" ", end + 30) != -1) {
+            lastPoint = content.indexOf(" ", end + 30);
+        } else lastPoint = content.indexOf(" ", end);
+        String text = content.substring(prevPoint, lastPoint);
+        try {
+            text = text.replaceAll(word, "<b>" + word + "</b>");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return text;
+    }
+
+    private List<SearchObject> getSearchDtoList(List<Lemma> lemmaList, Set<String> textLemmaList, int offset, int limit) throws IOException {
+        List<SearchObject> result = new ArrayList<>();
+        if (lemmaList.size() >= textLemmaList.size()) {
+            List<Page> foundPageList = pageRepository.findByLemmaList(lemmaList);
+            List<Index> foundIndexList = indexRepository.findIndexListByLemmasAndPages(lemmaList, foundPageList);
+            Hashtable<Page, Float> sortedPageByAbsRelevance = getPageAbsRelevance(foundPageList, foundIndexList);
+            List<SearchObject> dataList = getSearchData(sortedPageByAbsRelevance, textLemmaList);
+
+            if (offset > dataList.size()) {
+                return new ArrayList<>();
+            }
+
+            if (dataList.size() > limit) {
+                for (int i = offset; i < limit; i++) {
+                    result.add(dataList.get(i));
+                }
+                return result;
+            } else return dataList;
+        } else
+            return result;
+    }
+
+    private Hashtable<Page, Float> getPageAbsRelevance(List<Page> pageList, List<Index> indexList) {
+        HashMap<Page, Float> pageWithRelevance = new HashMap<>();
+        for (Page page : pageList) {
+            float relevant = 0;
+            for (Index index : indexList) {
+                if (index.getPage() == page) {
+                    relevant += index.getRank();
+                }
+            }
+            pageWithRelevance.put(page, relevant);
+        }
+        HashMap<Page, Float> pageWithAbsRelevance = new HashMap<>();
+        for (Page page : pageWithRelevance.keySet()) {
+            float absRelevant = pageWithRelevance.get(page) / Collections.max(pageWithRelevance.values());
+            pageWithAbsRelevance.put(page, absRelevant);
+        }
+
+        return pageWithAbsRelevance
+                .entrySet()
+                .stream()
+                .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder())).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, Hashtable::new));
     }
 
 

@@ -16,5 +16,6 @@ public interface LemmaRepository extends CrudRepository<Lemma,Integer> {
     List<Lemma> findAllContains(int siteId);
     @Query(value = "SELECT * FROM search_engine.lemma WHERE lemma IN :lemmaList AND `site_id` = :siteId", nativeQuery = true)
     List<Lemma> findLemmaListBySetAndSite(Set<String> lemmaList, int siteId);
+
     long countBySiteId(Site siteId);
 }

@@ -112,4 +112,19 @@ public class LemmaFinder {
         }
         return true;
     }
+    public List<Integer> findLemmaIndexInText(String content, String lemma) {
+        List<Integer> lemmaIndexList = new ArrayList<>();
+        String[] elements = content.toLowerCase(Locale.ROOT).split("\\p{Punct}|\\s");
+        int index = 0;
+        for (String el : elements) {
+            Set<String> lemmas = getLemmaSet(el);
+            for (String lem : lemmas) {
+                if (lem.equals(lemma)) {
+                    lemmaIndexList.add(index);
+                }
+            }
+            index += el.length() + 1;
+        }
+        return lemmaIndexList;
+    }
 }
