@@ -13,6 +13,7 @@
 - Java Core;
 - Spring Boot;
 - Hibernate;
+- ForkJoinPool;
 - Maven;
 - REST API;
 - Git;
