@@ -1,4 +1,5 @@
 package searchengine.parser;
+import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -14,7 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.RecursiveTask;
-
+@Slf4j
 public class PageLinksExtractor extends RecursiveTask <List<Page>>  {
     private String path;
     private Site site;
@@ -74,7 +75,7 @@ public class PageLinksExtractor extends RecursiveTask <List<Page>>  {
             }
 
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            log.error("Ошибка при извлечении страниц с сайта - " + site.getUrl(),e);
         }
 
         return pageList;

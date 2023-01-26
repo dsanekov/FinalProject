@@ -29,3 +29,11 @@ indexing-settings:
     - url: https://et-cetera.ru/mobile/
       name: Театр «Et Cetera»
 
+logging:
+  file.name: logs/app.log
+  pattern:
+    console: "%d [%t] %-5level %logger{36} - %msg%n"
+    file: "%d [%t] %-5level %logger{36} - %msg%n"
+  level:
+    org.springframework: INFO
+    org.hibernate: INFO

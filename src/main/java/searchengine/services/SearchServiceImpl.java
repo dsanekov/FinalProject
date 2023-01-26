@@ -1,6 +1,7 @@
 package searchengine.services;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import searchengine.dto.statistics.SearchObject;
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class SearchServiceImpl implements SearchService{
     @Autowired
     private final SiteRepository siteRepository;
@@ -31,7 +33,7 @@ public class SearchServiceImpl implements SearchService{
     private final IndexRepository indexRepository;
     @Override
     public List<SearchObject> searchAllSites(String query, int offset, int limit) throws IOException {
-        System.out.println("Начинаем поиск по всем сайтам");
+        log.info("Начат поиск по всем сайтам");
         Iterable<Site> siteIterable = siteRepository.findAll();
         List<SearchObject> resultList = new ArrayList<>();
         List<Lemma> foundLemmaList = new ArrayList<>();
@@ -53,32 +55,32 @@ public class SearchServiceImpl implements SearchService{
                         for (int i = offset; i < limit; i++) {
                             resultList.add(searchData.get(i));
                         }
-
-                        System.out.println("Поиск по всем сайтам завершен");
+                        log.info("Поиск по сайтам завершен");
                         return resultList;
                     }
                 }
             }
         }
-        System.out.println("Поиск по всем сайтам завершен");
+        log.info("Поиск по сайтам завершен");
         return searchData;
     }
 
     @Override
     public List<SearchObject> searchOnSite(String query, String url, int offset, int limit) throws IOException {
-        System.out.println("Начинаем поиск по сайту - " + url);
+        log.info("Начат поиск по сайту - " + url);
         Site site = siteRepository.findSiteByUrl(url);
         Set<String> textLemmaSet = LemmaFinder.getInstance().getLemmaSet(query);
         List<Lemma> foundLemmaList = getLemmaListFromSite(textLemmaSet, site);
+        log.info("Поиск по сайту - " + url + " завершен");
         return getSearchDtoList(deleteFrequentLemmas(foundLemmaList,site), textLemmaSet, offset, limit);
     }
     private List<Lemma> deleteFrequentLemmas(List<Lemma> foundLemmaList, Site site){
+        log.info("Начата проверка и удаление часто встречающихся лемм из списка");
         long allPagesCount = pageRepository.countBySiteId(site);
         float percentOFPages = 0.2f;
         long maxCount = (long) (allPagesCount*percentOFPages);
         for(Lemma lemma : foundLemmaList){
             if(indexRepository.countByLemmaId(lemma.getId()) > maxCount){
-                System.out.println("Удаляем частую лемму");
                 foundLemmaList.remove(lemma);
             }
         }

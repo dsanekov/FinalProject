@@ -1,6 +1,9 @@
 package searchengine.services;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import searchengine.config.Site;
@@ -23,6 +26,7 @@ import java.util.concurrent.Executors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class IndexingServiceImpl implements IndexingService{
     @Autowired
     private final SitesList sites;
@@ -49,10 +53,10 @@ public class IndexingServiceImpl implements IndexingService{
     @Override
     public boolean startIndexingAllSites(){
         if(isIndexing()){
-            System.out.println("Индексация сайтов уже запущена!");
+            log.info("Индексация сайтов уже запущена!");
             return false;
         }
-        System.out.println("Начинаем индексировать сайты из конфига");
+        log.info("Начата индексация сайтов из конфига");
         List<Site> sitesList = sites.getSites();
         executorService = Executors.newFixedThreadPool(processorCoreCount);
         for(Site site : sitesList){
@@ -65,7 +69,7 @@ public class IndexingServiceImpl implements IndexingService{
     @Override
     public boolean startIndexingByUrl(String url){
         if(urlCheck(url)){
-            System.out.println("Переиндексация - " + url);
+            log.info("Начата переиндексация - " + url);
             executorService = Executors.newFixedThreadPool(processorCoreCount);
             executorService.submit(new SiteIndexer(url,siteRepository,pageRepository,lemmaRepository,lemmaFinder, indexRepository, sites));
             executorService.shutdown();
@@ -94,7 +98,6 @@ public class IndexingServiceImpl implements IndexingService{
     @Override
     public boolean stopIndexing(){
         if(isIndexing()){
-            System.out.println("Останавливаем индексацию");
             executorService.shutdownNow();
             Iterable<searchengine.model.Site> siteIterable = siteRepository.findAll();
             for(searchengine.model.Site site : siteIterable){
@@ -105,6 +108,7 @@ public class IndexingServiceImpl implements IndexingService{
                     siteRepository.save(site);
                     }
                 }
+            log.info("Индексация отановлена пользователем");
             return true;
         }
         return false;

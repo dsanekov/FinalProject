@@ -1,6 +1,7 @@
 package searchengine.parser;
 
 
+import lombok.extern.slf4j.Slf4j;
 import searchengine.config.SitesList;
 import searchengine.model.*;
 import searchengine.repositories.IndexRepository;
@@ -13,7 +14,7 @@ import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ForkJoinPool;
 
-
+@Slf4j
 public class SiteIndexer implements Runnable{
 private String url;
 private SiteRepository siteRepository;
@@ -37,6 +38,7 @@ private SitesList sites;
     @Override
     public void run() {
         if(siteRepository.findSiteByUrl(url) != null){
+            log.info("Удаление информации из базы о сайте" + url);
             System.out.println("Удаляем старые данные из базы");
             deleteOldData();
         }
@@ -50,6 +52,7 @@ private SitesList sites;
         findLemmas(allPages, newSite);
     }
     private void findLemmas(List<Page> allPages, Site newSite){
+        log.info("Начат поиск лемм по сайту - " + newSite.getUrl());
 
         for(Page page : allPages){
             if(page.getCode()/100 == 4 || page.getCode()/100 == 5){
@@ -72,9 +75,11 @@ private SitesList sites;
             lemmaRepository.saveAll(lemmaList);
             indexRepository.saveAll(indexList);
         }
+        log.info("Поиск лемм закончен. Сайт - " + newSite.getUrl());
         updateLemmasFrequency(newSite);
     }
     private void updateLemmasFrequency(Site newSite){
+        log.info("Начат процесс обнолвения лемм по сайту - " + newSite.getUrl());
         System.out.println("Начинаем обновлять частоту лемм");
 
         List<Lemma> lemmaIterable = lemmaRepository.findAllContains(newSite.getId());
@@ -104,6 +109,7 @@ private SitesList sites;
         newSite.setStatus(SiteStatus.INDEXED);
         newSite.setStatusTime(LocalDateTime.now());
         siteRepository.save(newSite);
+        log.info("Обновление частоты лемм закончено. Сайт - " + newSite.getUrl());
     }
 
     private void deleteOldData(){
